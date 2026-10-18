@@ -69,6 +69,43 @@ local function copyToClipboard(text)
     end
 end
 
+local function xmlEscape(s)
+    return s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;")
+end
+
+local function buildAnimationRBXMX(animName, animId)
+    local safeName = xmlEscape(animName)
+    return '<?xml version="1.0" encoding="utf-8"?>\n'
+        .. '<roblox version="4">\n'
+        .. '  <Item class="Animation" referent="RBX0">\n'
+        .. '    <Properties>\n'
+        .. '      <string name="Name">' .. safeName .. '</string>\n'
+        .. '      <Content name="AnimationId"><url>' .. animId .. '</url></Content>\n'
+        .. '    </Properties>\n'
+        .. '  </Item>\n'
+        .. '</roblox>'
+end
+
+local function dumpAnimation(animName, animId)
+    if not writefile then
+        warn("writefile not supported by this executor.")
+        return false, nil
+    end
+
+    local folder = "Animation_Logger"
+    if makefolder and not (isfolder and isfolder(folder)) then
+        makefolder(folder)
+    end
+
+    local safeName = animName:gsub("[^%w%s_%-]", ""):gsub("%s+", "_")
+    if safeName == "" then safeName = "Animation" end
+    local numericId = animId:match("%d+") or "unknown"
+    local filePath = folder .. "/" .. safeName .. "_" .. numericId .. ".rbxmx"
+
+    writefile(filePath, buildAnimationRBXMX(animName, animId))
+    return true, filePath
+end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AnimationLogger"
 screenGui.ResetOnSpawn = false
@@ -461,6 +498,26 @@ local function logAnimation(animationTrack)
     copyCorner.CornerRadius = UDim.new(0, 6)
     copyCorner.Parent = copyBtn
 
+    local dumpBtn = Instance.new("TextButton")
+    dumpBtn.Name = "DumpBtn"
+    dumpBtn.AnchorPoint = Vector2.new(1, 0)
+    dumpBtn.Position = UDim2.new(1, -78, 0, 36)
+    dumpBtn.Size = UDim2.fromOffset(56, 20)
+    dumpBtn.BackgroundColor3 = Theme.Accent
+    dumpBtn.BackgroundTransparency = 0.85
+    dumpBtn.BorderSizePixel = 0
+    dumpBtn.Text = "Dump"
+    dumpBtn.TextColor3 = Theme.Accent
+    dumpBtn.TextSize = 10
+    dumpBtn.Font = Theme.FontBold
+    dumpBtn.AutoButtonColor = false
+    dumpBtn:SetAttribute("Dumped", false)
+    dumpBtn.Parent = entry
+
+    local dumpCorner = Instance.new("UICorner")
+    dumpCorner.CornerRadius = UDim.new(0, 6)
+    dumpCorner.Parent = dumpBtn
+
     entries[id] = {
         count = 1,
         name = name,
@@ -526,6 +583,41 @@ local function logAnimation(animationTrack)
             end
         end)
     end))
+    
+        track(dumpBtn.MouseEnter:Connect(function()
+        if destroyed or dumpBtn:GetAttribute("Dumped") then return end
+        tween(dumpBtn, { BackgroundTransparency = 0, TextColor3 = Color3.new(1, 1, 1) }, 0.15)
+    end))
+
+    track(dumpBtn.MouseLeave:Connect(function()
+        if destroyed or dumpBtn:GetAttribute("Dumped") then return end
+        tween(dumpBtn, { BackgroundTransparency = 0.55, TextColor3 = Theme.Accent }, 0.15)
+    end))
+
+    track(dumpBtn.MouseButton1Click:Connect(function()
+        if destroyed then return end
+        local ok, _fileName = dumpAnimation(name, id)
+        if ok then
+            dumpBtn:SetAttribute("Dumped", true)
+            dumpBtn.Text = "Saved"
+            tween(dumpBtn, { BackgroundColor3 = Theme.Success, TextColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0 }, 0.15)
+            task.delay(1.5, function()
+                if destroyed or not dumpBtn.Parent then return end
+                dumpBtn:SetAttribute("Dumped", false)
+                dumpBtn.Text = "Dump"
+                tween(dumpBtn, { BackgroundColor3 = Theme.Accent, TextColor3 = Theme.Accent, BackgroundTransparency = 0.85 }, 0.2)
+            end)
+        else
+            dumpBtn.Text = "Failed"
+            tween(dumpBtn, { BackgroundColor3 = Theme.Danger, TextColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0 }, 0.15)
+            task.delay(1.5, function()
+                if destroyed or not dumpBtn.Parent then return end
+                dumpBtn.Text = "Dump"
+                tween(dumpBtn, { BackgroundColor3 = Theme.Accent, TextColor3 = Theme.Accent, BackgroundTransparency = 0.85 }, 0.2)
+            end)
+        end
+    end))
+
 end
 
 local function setupCharacter(character)
