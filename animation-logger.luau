@@ -3,7 +3,15 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+
+local guiParent = game:GetService("CoreGui")
+if not guiParent then
+    if gethui then
+        guiParent = gethui()
+    else
+        guiParent = player:WaitForChild("PlayerGui")
+    end
+end
 
 local Theme = {
     BgTop = Color3.fromRGB(52, 58, 78),
@@ -107,11 +115,12 @@ local function dumpAnimation(animName, animId)
 end
 
 local screenGui = Instance.new("ScreenGui")
+screenGui.DisplayOrder = 999
 screenGui.Name = "AnimationLogger"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = playerGui
+screenGui.Parent = guiParent
 
 local function destroy()
     if destroyed then return end
@@ -417,7 +426,7 @@ local function logAnimation(animationTrack)
 
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "Name"
-    nameLabel.Size = UDim2.new(1, -110, 0, 20)
+    nameLabel.Size = UDim2.new(1, -150, 0, 20)    
     nameLabel.Position = UDim2.fromOffset(16, 12)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = name
@@ -430,7 +439,7 @@ local function logAnimation(animationTrack)
 
     local idLabel = Instance.new("TextLabel")
     idLabel.Name = "Id"
-    idLabel.Size = UDim2.new(1, -110, 0, 16)
+    idLabel.Size = UDim2.new(1, -150, 0, 16)    
     idLabel.Position = UDim2.fromOffset(16, 34)
     idLabel.BackgroundTransparency = 1
     idLabel.Text = id
